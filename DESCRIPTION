@@ -1,0 +1,23 @@
+Package: Seqtometry
+Title: Signature scoring for single cell analysis
+Version: 0.1.0
+URL: https://github.com/HawigerLab/Seqtometry
+Authors@R: c( 
+    person("Robert", "Kousnetsov", email = "robert.kousnetsov@health.slu.edu", role = c("aut", "cre")),
+    person("Daniel", "Hawiger", email = "daniel.hawiger@health.slu.edu", role = c("cph")))
+Description: 
+    This package provides the Seqtometry scoring algorithm for the generation of single cell 
+    gene set (signature) enrichment scores for scRNA-seq or scATAC-seq data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends: R (>= 4.3.0)
+LinkingTo: Rcpp
+Imports:
+    data.table,
+    doFuture,
+    foreach,
+    iterators,
+    MatrixGenerics,
+    Rcpp

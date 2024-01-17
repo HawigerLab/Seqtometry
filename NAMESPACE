@@ -1,0 +1,12 @@
+export(score)
+
+importFrom(MatrixGenerics, rowMeans2)
+importFrom(MatrixGenerics, rowSds)
+importFrom(data.table, `%chin%`)
+importFrom(data.table, frankv)
+importFrom(doFuture, `%dofuture%`)
+importFrom(foreach, foreach)
+importFrom(iterators, icount)
+
+importFrom(Rcpp, evalCpp)
+useDynLib(Seqtometry, .registration=TRUE)
