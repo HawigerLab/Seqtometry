@@ -2,18 +2,18 @@
 % Please edit documentation in R/score.R
 \name{.gene_indices}
 \alias{.gene_indices}
-\title{Finds row indices of signature genes in given gene expression matrix}
+\title{Finds row indices of signature genes}
 \usage{
 .gene_indices(mat, gss)
 }
 \arguments{
-\item{mat}{matrix-like: gene expression data (genes x cells)}
+\item{mat}{\strong{matrix-like} Gene expression data (genes x cells)}
 
-\item{gss}{named list of character: signature genes (with same nomenclature system as mat)}
+\item{gss}{\strong{named list of character} Signature genes (with same nomenclature system as \code{mat})}
 }
 \value{
-0-based indices (for passing to Rcpp function) of signature genes
+\strong{integer} 0-based indices (for passing to Rcpp function) of signature genes
 }
 \description{
-Finds row indices of signature genes in given gene expression matrix
+For converting from character to integer based indexing
 }

@@ -2,24 +2,22 @@
 % Please edit documentation in R/RcppExports.R
 \name{wks}
 \alias{wks}
-\title{Helper function for performing a weighted Kolmogorov-Smirnov like procedure.}
+\title{Helper function for performing a weighted Kolmogorov-Smirnov-like procedure.}
 \usage{
-wks(gene_ranks, sig_idx, aux)
+wks(gex, gss, mus, sds)
 }
 \arguments{
-\item{gene_ranks}{numeric: centered gene expression ranks}
+\item{gex}{numeric: normalized gene expression values}
 
-\item{sig_idx}{numeric: indices of genes belonging to the signature (gene set) being scored}
+\item{gss}{list: indices of genes in each gene set}
 
-\item{aux}{numeric: two element vector containing
-0. Centering value that was used for ranks
-\enumerate{
-\item Start index (after centering) for the running sum procedure
-}}
+\item{mus}{numeric: means of all genes}
+
+\item{sds}{numeric: standard deviations of all genes}
 }
 \value{
 Modified Kuiper statistic (sum of minimal and maximal deviations during running sum)
 }
 \description{
-Helper function for performing a weighted Kolmogorov-Smirnov like procedure.
+Helper function for performing a weighted Kolmogorov-Smirnov-like procedure.
 }

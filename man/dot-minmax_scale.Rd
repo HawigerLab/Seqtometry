@@ -2,16 +2,16 @@
 % Please edit documentation in R/score.R
 \name{.minmax_scale}
 \alias{.minmax_scale}
-\title{Scale vector to unit range = (0, 1)}
+\title{Minmax transform}
 \usage{
 .minmax_scale(x)
 }
 \arguments{
-\item{x}{numeric: values to be scaled}
+\item{x}{\strong{numeric} Values to be scaled}
 }
 \value{
-numeric: scaled values
+\strong{numeric} Minmax transformed values
 }
 \description{
-Scale vector to unit range = (0, 1)
+Scales input vector to unit range
 }

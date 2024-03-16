@@ -1,0 +1,16 @@
+bibentry(
+  bibtype = "Article",
+  author = c(
+    person("Robert", "Kousnetsov"), 
+    person("Jessica", "Bourque"),
+    person("Alexey", "Surnov"),
+    person("Ian", "Fallahee"),
+    person("Daniel", "Hawiger")),
+  title = "Single-cell sequencing analysis within biologically relevant dimensions",
+  journal = "Cell Systems",
+  year = "2024",
+  volume = "15",
+  number = "1",
+  pages = "83-103.e11",
+  doi = "10.1016/j.cels.2023.12.005"
+)

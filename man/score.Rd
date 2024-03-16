@@ -4,24 +4,19 @@
 \alias{score}
 \title{Seqtometry scoring}
 \usage{
-score(mat, signatures, minmax = TRUE, fut_opt = NULL)
+score(mat, signatures, minmax = TRUE)
 }
 \arguments{
-\item{mat}{matrix-like: gene expression data (genes x cells)}
+\item{mat}{\strong{matrix-like} Gene expression data (genes x cells)}
 
-\item{signatures}{named list of character: signature genes (with same nomenclature system used in mat)}
+\item{signatures}{\strong{named list of character} Signature genes (with same nomenclature system used in \code{mat})}
 
-\item{minmax}{logical(1): whether to perform minmax transform on scoring results (default: TRUE)}
-
-\item{fut_opt}{named list: additional options to customize the behavior of \verb{\%dofuture\%} (default: NULL)}
+\item{minmax}{\strong{logical(1)} Whether to perform minmax transform on scoring results (default: TRUE)}
 }
 \value{
-matrix (cells x signatures): single cell scores for each signature
+data.table (cells x signatures): single cell scores for each signature, where
+cell barcodes are stored in the "id" column
 }
 \description{
 Scores signatures for the given matrix (which has already undergone QC, normalization, and imputation)
-}
-\details{
-Ensure that future globals are given enough memory.
-For example, to grant a max of 16 GiB: \code{options(future.globals.maxSize = 16 * 1024^3)}
 }
