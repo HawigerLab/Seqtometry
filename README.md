@@ -8,6 +8,9 @@ For the accompanying GUI prototype, please see the [SeqtometryGUI repository](ht
 ## Installation
 This package can be installed using remotes (or devtools).
 
+> [!WARNING]
+> If you are using Windows, you must first install RTools.
+
 ```r
 remotes::install_github("HawigerLab/Seqtometry")
 ```
