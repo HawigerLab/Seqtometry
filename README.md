@@ -8,7 +8,7 @@ Kousnetsov et al., Single-cell sequencing analysis within biologically relevant 
 
 # Graphical abstract
 
-<img src="https://github.com/HawigerLab/Seqtometry/inst/Images/Graphical_Abstract.pdf" width="50%">
+<img src="https://github.com/HawigerLab/Seqtometry/blob/main/inst/Images/Graphical_Abstract.pdf" width="50%">
 
 # Quickstart
 
@@ -187,7 +187,7 @@ file.path(PLOT_DIR, "Basic_Workflow_B_and_T_Cell_Plot.pdf") |>
   ggsave(width = 8, height = 8)
 ```
 
-<img src="https://github.com/HawigerLab/Seqtometry/inst/Images/Basic_Workflow_B_and_T_cell_Plot.pdf" width="50%">
+<img src="https://github.com/HawigerLab/Seqtometry/blob/main/inst/Images/Basic_Workflow_B_and_T_cell_Plot.pdf" width="50%">
 
 c. Extract (gate) the cells negative for both signatures.
 
@@ -214,7 +214,7 @@ file.path(PLOT_DIR, "Basic_Workflow_NK_and_Monocyte_Plot.pdf") |>
   ggsave(width = 8, height = 8)
 ```
 
-<img src="https://github.com/HawigerLab/Seqtometry/inst/Images/Basic_Workflow_NK_and_Monocyte_Plot.pdf" width="50%">
+<img src="https://github.com/HawigerLab/Seqtometry/blob/main/inst/Images/Basic_Workflow_NK_and_Monocyte_Plot.pdf" width="50%">
 
 The above steps demonstrate how plots constructed from signature scores (using the Seqtometry scoring algorithm) can be used to identify the major PBMC populations in a hierarchical fashion (in a manner akin to flow cytometry). 
 
