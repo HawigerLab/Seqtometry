@@ -39,7 +39,7 @@ install.packages("tidyverse")
 
 # Utilities for scRNA-seq analysis
 install.packages("Seurat")
-BiocManager::install("scuttle")
+BiocManager::install("batchelor")
 
 # For signature scoring (and imputation)
 remotes::install_github("HawigerLab/Seqtometry")
