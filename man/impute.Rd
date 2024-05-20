@@ -20,7 +20,7 @@ impute(
   exact_solver = TRUE,
   conserve_memory = FALSE,
   env_ret = FALSE,
-  verbose = FALSE
+  verbose = TRUE
 )
 }
 \arguments{
@@ -63,7 +63,7 @@ Otherwise the function environment as a list containing all parameters (possibly
 \itemize{
 \item imp \strong{matrix or DelayedMatrix} Imputed matrix.
 \item aff \strong{dgCMatrix} Markov affinity matrix (graph diffusion operator).
-\item pca \strong{list} Possibly computed (if pca was NULL), yielding a five element list, where:
+\item pca \strong{list} Possibly computed (if pca was NULL), yielding a four element list, where:
 \itemize{
 \item \code{x} \strong{matrix (cells x PCs)} The principal components matrix (scaled left singular vectors).
 \item \code{v} \strong{matrix (genes x PCs)} The rotation matrix (right singular vectors).

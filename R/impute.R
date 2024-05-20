@@ -42,6 +42,7 @@ impute <- function(gex,
     if (verbose) cat("Transposing input matrix\n")
     gex <- Matrix::t(gex)
   }
+  gex <- gex[, Matrix::colSums(gex) > 0] # Remove any unexpressed genes prior to PCA to prevent errors
   if (do_norm) {
     if (verbose) cat("Normalizing input matrix\n")
     gex <- .normalize(gex)
@@ -58,13 +59,14 @@ impute <- function(gex,
   if (verbose) cat("Calculating diffusion operator\n")
   aff <- .calc_diff_op(pca$x, knn, ka, dist_metric)
 
-  if (verbose) cat("Applying diffusion operator")
+  if (verbose) cat("Applying diffusion operator\n")
   c(imp, dft) %<-% .apply_diff_op(gex, pca$x, aff, dft, t_max, tol, exact_solver)
   imp <- `if`(exact_solver,
     Matrix::t(imp) |> as.matrix(),
     .invert_pca(imp, pca$v, pca$center, pca$scale, conserve_memory))
   dimnames(imp) <- dimnames(gex) |> rev()
 
+  cat("Done\n")
   if (env_ret) as.list(environment()) else imp
 }
 
