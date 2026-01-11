@@ -1,0 +1,149 @@
+---
+title: "Seqtometry vignette"
+output: BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{Seqtometry vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r opts, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Basic workflow
+
+```{r overview, echo = FALSE, fig.align = "center", out.width = "80%"}
+knitr::include_graphics("https://prod-shared-star-protocols.s3.amazonaws.com/protocols/3639-GA.jpg")
+```
+
+This vignette contains a simple example of a Seqtometry workflow involving peripheral blood mononuclear cell (PBMC) data. Herein, 4 immune cell populations will be identified using corresponding signatures (gene sets). For more advanced workflows, please see the [STAR Protocols publication](https://doi.org/10.1016/j.xpro.2024.103209).
+
+## Retrieve data and signatures
+
+Load a small PBMC dataset and associated signatures.
+
+```{r fetch, message = FALSE}
+# Gene expression data (with gene symbols)
+dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+gex <- SingleCellExperiment::counts(dat) |> as("dgCMatrix")
+dimnames(gex) <- list(
+  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+  dat[["Barcode"]])
+
+# Signatures (consisting of gene symbols)
+sig_names <- c("T cell", "B cell", "NK cell", "Monocyte")
+sig_url <- "https://ars.els-cdn.com/content/image/1-s2.0-S2405471223003599-mmc2.xlsx"
+sig <- openxlsx::read.xlsx(sig_url) |>
+  dplyr::filter(Signature.name %in% sig_names) |>
+  dplyr::mutate(Genes = stringr::str_split(Genes, ", ")) |>
+  dplyr::pull(Genes, name = Signature.name)
+```
+
+## Preprocessing and imputation
+
+Perform quality control, normalization, and MAGIC imputation (van Dijk et al. 2018).
+
+```{r pre}
+qc <- function(mat) {
+  # Indices of mitochondrial genes
+  mito_idx <- grep("^MT-", rownames(mat))
+
+  # Calculate QC metrics
+  res <- mat |>
+    scuttle::perCellQCMetrics(subsets = list("Mito" = mito_idx)) |>
+    scuttle::perCellQCFilters(sub.fields = "subsets_Mito_percent")
+
+  # Remove low quality cells
+  mat[, !res$discard]
+}
+
+imputed_gex <- gex |>
+  qc() |>
+  scuttle::normalizeCounts() |>
+  Seqtometry::impute()
+```
+
+## Score and plot data
+
+Score the data for the *T cell* and *B cell* signatures.
+
+```{r score}
+# May set up parallel backend if it is supported
+# Will default to non-parallel (sequential) execution
+future::plan("sequential")
+
+# Allot 1 GiB of memory for global variables
+options(future.globals.maxSize = 1024 ^ 3)
+
+# Scoring with lymphocyte signatures
+scores <- sig[c("T cell", "B cell")] |>
+  Seqtometry::score(imputed_gex, signatures = _)
+```
+
+Create a plot from the signature scores.
+
+```{r plot, fig.align = "center", out.width = "50%"}
+# Avoid having to prefix common plot elements with ggplot2::
+library(ggplot2)
+
+# A flow cytometry style theme for plots
+theme_custom <- theme_bw() + theme(
+  aspect.ratio = 1,
+  panel.grid = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(color = "black", fill = NA, linewidth = 2),
+  axis.title = element_text(size = 32, face = "italic"),
+  axis.text = element_text(size = 16))
+
+# Utility function for generating flow cytometry style plots
+biaxial_plot <- function(d, x, y) {
+  lim <- c(-0.15, 1.15)
+  brk <- seq(0, 1, 0.25)
+  lbl <- c("0", "0.25", "0.5", "0.75", "1")
+  ggplot(d, aes(x = .data[[x]], y = .data[[y]])) +
+    geom_density_2d(color = "black", h = c(0.2, 0.2),
+      contour_var = "ndensity", binwidth = 0.125) +
+    scale_x_continuous(limits = lim, breaks = brk, labels = lbl) +
+    scale_y_continuous(limits = lim, breaks = brk, labels = lbl) +
+    theme_custom
+}
+
+# Utility function to draw a rectangular region
+rect_region <- function(lims) {
+  do.call(annotate, c(lims, geom = "rect",
+    color = "blue", fill = NA, linewidth = 2))
+}
+
+# Limits defining a rectangular region for double negative cells
+dn_lims <- list(xmin = -0.075, xmax = 0.5, ymin = 0, ymax = 0.5)
+
+# Draw the biaxial plot with the rectangular region
+biaxial_plot(scores, "T cell", "B cell") + rect_region(dn_lims)
+```
+
+Extract (gate) the cells negative for both signatures. Then, rescore the gated cells with the *Monocyte* and *NK cell* signatures and visualize the results.
+
+```{r gate, fig.align = "center", out.width = "50%"}
+# Subset the imputed data, keeping only the cells in the blue region
+gated_imputed_gex <- with(scores,
+  imputed_gex[, `T cell` < dn_lims$xmax & `B cell` < dn_lims$ymax])
+
+# Score the subsetted data with the remaining signatures
+gated_scores <- sig[c("NK cell", "Monocyte")] |>
+  Seqtometry::score(gated_imputed_gex, signatures = _)
+
+# Plot the new scores
+biaxial_plot(gated_scores, "Monocyte", "NK cell")
+```
+
+The above steps demonstrate how plots constructed from signature scores (using the Seqtometry scoring algorithm) can be used to identify major PBMC populations in a hierarchical fashion (in a manner akin to flow cytometry). 
+
+Additional characterization of cells can be accomplished by employing signatures corresponding to biological processes of interest. Please see the [Seqtometry publication (Cell Systems)](https://doi.org/10.1016/j.cels.2023.12.005) for examples.
+
+```{r info}
+sessionInfo()
+```
