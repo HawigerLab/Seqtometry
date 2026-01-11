@@ -7,14 +7,14 @@
 .calc_pca(gex, npc, scale)
 }
 \arguments{
-\item{gex}{\strong{matrix or Matrix} Gene expression matrix}
+\item{gex}{\strong{matrix or Matrix} Gene expression matrix (without any zero variance genes)}
 
 \item{npc}{\strong{numeric(1)} Number of leading principal components to compute}
 
 \item{scale}{\strong{logical(1)} Whether to scale genes to unit variance}
 }
 \value{
-\strong{list} PC loading/rotation matrices as well as centering/scaling vectors.
+\strong{list} PC loading/rotation matrices as well as centering/scaling vectors
 }
 \description{
 Calculate leading principal components (via truncated singular value decomposition).

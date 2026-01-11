@@ -13,10 +13,10 @@
 
 \item{ka}{\strong{integer(1)} Number of nearest neighbors to use for adaptive kernel}
 
-\item{dist_metric}{\strong{character(1)} Type of metric to use for distance calculations during kNN search.}
+\item{dist_metric}{\strong{character(1)} Type of metric to use for distance calculations during kNN search}
 }
 \value{
-\strong{dgCMatrix} Markov affinity matrix.
+\strong{dgCMatrix} Markov affinity matrix
 }
 \description{
 Calculate graph diffusion operator (Markov affinity matrix).

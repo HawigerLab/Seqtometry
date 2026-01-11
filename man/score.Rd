@@ -2,21 +2,51 @@
 % Please edit documentation in R/score.R
 \name{score}
 \alias{score}
-\title{Seqtometry scoring}
+\title{Seqtometry scoring (Kousnetsov et al. 2024)}
 \usage{
 score(mat, signatures, minmax = TRUE)
 }
 \arguments{
-\item{mat}{\strong{matrix-like} Gene expression data (genes x cells)}
+\item{mat}{\strong{matrix, Matrix, or DelayedMatrix}
+Gene expression data (genes x cells)}
 
-\item{signatures}{\strong{named list of character} Signature genes (with same nomenclature system used in \code{mat})}
+\item{signatures}{\strong{named list of character}
+Signature genes (with same nomenclature system used in \code{mat})}
 
-\item{minmax}{\strong{logical(1)} Whether to perform minmax transform on scoring results (default: TRUE)}
+\item{minmax}{\strong{logical(1)}
+Whether to perform minmax transform on scoring results (default: TRUE)}
 }
 \value{
-data.table (cells x signatures): single cell scores for each signature, where
-cell barcodes are stored in the "id" column
+\strong{data.table}
+Single cell scores (cells x signatures) for each signature, where cell barcodes are stored in the "id" column
 }
 \description{
-Scores signatures for the given matrix (which has already undergone QC, normalization, and imputation)
+Computes signature scores (a weighted KS-like statistic) for single cell expression data
+}
+\examples{
+# PBMC data, basic processing pipeline
+dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+dimnames(dat) <- list(
+  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+  dat[["Barcode"]])
+dat <- dat |>
+  scuttle::quickPerCellQC() |>
+  scuttle::logNormCounts() |>
+  scater::runUMAP()
+
+# MAGIC imputation
+imp <- SingleCellExperiment::logcounts(dat) |>
+  as("dgCMatrix") |>
+  Seqtometry::impute()
+
+# Score with a B cell signature (gene set)
+options(future.globals.maxSize = 1024^3)
+b_cell_sig <- list("B_cell" = c("CD19", "MS4A1", "CD79A", "CD79B"))
+dat[["B cell signature"]] <- Seqtometry::score(imp, b_cell_sig)[["B_cell"]]
+
+# Visualize a hallmark B cell gene versus a B cell signature score
+p1 <- scater::plotReducedDim(dat, "UMAP", color_by = "CD19")
+p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "B cell signature")
+patchwork::wrap_plots(p1, p2, ncol = 2)
+
 }

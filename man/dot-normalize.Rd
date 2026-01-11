@@ -7,11 +7,11 @@
 .normalize(gex)
 }
 \arguments{
-\item{gex}{Gene expression matrix (cells x genes)}
+\item{gex}{\strong{matrix or Matrix} Gene expression matrix (cells x genes)}
 }
 \value{
-\strong{matrix or dgCMatrix} Transformed (normalized) matrix
+\strong{matrix or Matrix} Transformed (normalized) matrix
 }
 \description{
-Simple normalization method for scRNA-seq data
+Simple normalization method for scRNA-seq data.
 }

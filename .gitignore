@@ -1,2 +1,4 @@
 .DS_Store
 vignettes/*.html
+src/*.o
+src/*.so

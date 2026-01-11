@@ -1,17 +1,47 @@
-#' Seqtometry scoring
+#' Seqtometry scoring (Kousnetsov et al. 2024)
 #' @description
-#' Scores signatures for the given matrix (which has already undergone QC, normalization, and imputation)
-#' @param mat **matrix-like** Gene expression data (genes x cells)
-#' @param signatures **named list of character** Signature genes (with same nomenclature system used in `mat`)
-#' @param minmax **logical(1)** Whether to perform minmax transform on scoring results (default: TRUE)
-#' @returns data.table (cells x signatures): single cell scores for each signature, where
-#'   cell barcodes are stored in the "id" column
+#' Computes signature scores (a weighted KS-like statistic) for single cell expression data
+#' @param mat **matrix, Matrix, or DelayedMatrix**
+#' Gene expression data (genes x cells)
+#' @param signatures **named list of character**
+#' Signature genes (with same nomenclature system used in `mat`)
+#' @param minmax **logical(1)**
+#' Whether to perform minmax transform on scoring results (default: TRUE)
+#' @returns **data.table**
+#' Single cell scores (cells x signatures) for each signature, where cell barcodes are stored in the "id" column
+#' @examples
+#' # PBMC data, basic processing pipeline
+#' dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+#' dimnames(dat) <- list(
+#'   SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+#'   dat[["Barcode"]])
+#' dat <- dat |>
+#'   scuttle::quickPerCellQC() |>
+#'   scuttle::logNormCounts() |>
+#'   scater::runUMAP()
+#'
+#' # MAGIC imputation
+#' imp <- SingleCellExperiment::logcounts(dat) |>
+#'   as("dgCMatrix") |>
+#'   Seqtometry::impute()
+#'
+#' # Score with a B cell signature (gene set)
+#' options(future.globals.maxSize = 1024^3)
+#' b_cell_sig <- list("B_cell" = c("CD19", "MS4A1", "CD79A", "CD79B"))
+#' dat[["B cell signature"]] <- Seqtometry::score(imp, b_cell_sig)[["B_cell"]]
+#'
+#' # Visualize a hallmark B cell gene versus a B cell signature score
+#' p1 <- scater::plotReducedDim(dat, "UMAP", color_by = "CD19")
+#' p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "B cell signature")
+#' patchwork::wrap_plots(p1, p2, ncol = 2)
+#'
 #' @importFrom data.table `:=`
 #' @export
 score <- function(mat, signatures, minmax = TRUE) {
   # Check parameter types
   checkmate::assert_multi_class(mat, c("matrix", "Matrix", "DelayedMatrix"))
   checkmate::assert_character(rownames(mat))
+  checkmate::assert_character(colnames(mat))
   checkmate::assert_list(signatures, type = "character")
   checkmate::assert_logical(minmax, len = 1L)
 
@@ -31,9 +61,9 @@ score <- function(mat, signatures, minmax = TRUE) {
   # 0-based (for C++) row indices of signature genes
   gix <- .gene_indices(mat, signatures)
 
-  # Loop (with opt-in parallelism) over all cells yielding signature score matrix
+  # Loop (with opt-in parallelism via future) over all cells yielding signature score matrix
   # Calls Rcpp subroutine for weighted KS-like procedure
-  # Convert to data.table for plotting later (in ggplot2)
+  # Converts resultant list to data.table for plotting later (in ggplot2)
   ret <- seq_len(ncol(mat)) |>
     future.apply::future_lapply(\(j) wks(mat[, j], gix, mus, sds)) |>
     data.table::transpose() |>
@@ -42,11 +72,9 @@ score <- function(mat, signatures, minmax = TRUE) {
   # Apply minmax transform to scores
   if (minmax) ret[, names(ret) := lapply(ret, .minmax_scale)]
 
-  # Assign cell barcodes and signature names to scores
+  # Assign cell barcodes (id) and signature names to scores
   data.table::setnames(ret, names(signatures))
-  if (!is.null(colnames(mat))) ret[, "id" := colnames(mat)]
-
-  ret
+  ret[, "id" := colnames(mat)] |> data.table::setcolorder("id")
 }
 
 #' Finds row indices of signature genes

@@ -1,22 +1,38 @@
-#' Performs MAGIC imputation
+#' MAGIC imputation (van Dijk et al. 2018)
 #' @description
 #' Calculates a graph diffusion operator for the given input matrix and applies it to produce an imputed matrix.
-#' @param gex **matrix or Matrix** Gene expression values (that has passed quality control).
-#' @param transpose **logical(1)** Whether to transpose gex (make it cells x genes) prior to downstream operations.
-#' @param do_norm **logical(1)** Whether to perform LogCP10K normalization on gex.
-#' @param pca **matrix (cells x PCs) or NULL** Precomputed principal component matrix (or NULL to derive it from gex).
-#' @param npc **integer(1)** Number of principal components (min = 1) to calculate.
-#' @param scale **logical(1)** Whether to scale columns of input matrix (after centering) to unit variance prior to PCA.
-#' @param knn **integer(1)** Number of nearest neighbors (min = 2) to consider during distance calculation.
-#' @param ka **integer(1)** Number of nearest neighbors (min = 2, max <= knn) to use for the adaptive kernel.
-#' @param dist_metric **character(1)** Type of metric to use for distance calculations during kNN search.
-#' @param dft **NULL or integer(1)** Automatic (NULL) or user-defined (integer) diffusion time (min = 1, max = 16).
-#' @param t_max **integer(1)** Maximum diffusion time to test when using automatic diffusion time (min = 1, max = 16).
-#' @param tol **numeric(1)** Threshold for Procrustes disparity (min = 0, max = 1) between successive diffusion times.
-#' @param exact_solver **logical(1)** Whether to perform imputation in gene space (TRUE) or PCA space (FALSE).
-#' @param conserve_memory **logical(1)** Whether to avoid allocating a large dense matrix when `exact_solver = FALSE`.
-#' @param env_ret **logical(1)** Return all variables in the environment (TRUE) or just the imputed matrix (FALSE).
-#' @param verbose **logical(1)** Whether to issue print statements at different major parts of the algorithm.
+#' @param gex **matrix or Matrix**
+#' Gene expression values (that has passed quality control).
+#' @param transpose **logical(1)**
+#' Whether to transpose gex (make it cells x genes) prior to downstream operations.
+#' @param do_norm **logical(1)**
+#' Whether to perform LogCP10K normalization on gex.
+#' @param pca **matrix (cells x PCs) or NULL**
+#' Precomputed principal component matrix (or NULL to derive it from gex).
+#' @param npc **integer(1)**
+#' Number of principal components (min = 1) to calculate.
+#' @param scale **logical(1)**
+#' Whether to scale columns of input matrix to unit variance prior to PCA.
+#' @param knn **integer(1)**
+#' Number of nearest neighbors (min = 2) to consider during distance calculation.
+#' @param ka **integer(1)**
+#' Number of nearest neighbors (min = 2, max <= knn) to use for the adaptive kernel.
+#' @param dist_metric **character(1)**
+#' Type of metric to use for distance calculations during kNN search.
+#' @param dft **NULL or integer(1)**
+#' Automatic (NULL) or user-defined (integer) diffusion time (min = 1, max = 16).
+#' @param t_max **integer(1)**
+#' Maximum diffusion time to test when using automatic diffusion time (min = 1, max = 16).
+#' @param tol **numeric(1)**
+#' Threshold for Procrustes disparity (min = 0, max = 1) between successive diffusion times.
+#' @param exact_solver **logical(1)**
+#' Whether to perform imputation in gene space (TRUE) or PCA space (FALSE).
+#' @param conserve_memory **logical(1)**
+#' Whether to avoid allocating a large dense matrix when `exact_solver = FALSE`.
+#' @param env_ret **logical(1)**
+#' Return all variables in the environment (TRUE) or just the imputed matrix (FALSE).
+#' @param verbose **logical(1)**
+#' Whether to print messages at different major parts of the algorithm.
 #' @returns **matrix-like or list**
 #' If `env_ret = FALSE`, then just the imputed matrix.
 #' Otherwise the function environment as a list containing all parameters (possibly modified) as well as
@@ -27,6 +43,30 @@
 #'     - `v` **matrix (genes x PCs)** The rotation matrix (right singular vectors).
 #'     - `center` **integer (cells)** The centering vector.
 #'     - `scale` **integer (cells) or NULL** The scaling vector (or NULL if no scaling was applied).
+#' @examples
+#' # PBMC data, basic processing pipeline
+#' dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+#' dimnames(dat) <- list(
+#'   SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+#'   dat[["Barcode"]])
+#' dat <- dat |>
+#'   scuttle::quickPerCellQC() |>
+#'   scuttle::logNormCounts() |>
+#'   scater::runUMAP()
+#'
+#' # MAGIC imputation
+#' imp <- SingleCellExperiment::logcounts(dat) |>
+#'   as("dgCMatrix") |>
+#'   Seqtometry::impute()
+#'
+#' # Visualize unimputed versus imputed expression
+#' # on UMAP plots for a gene of interest (GOI)
+#' goi <- "CD19"
+#' dat[["Imputed_GOI"]] <- imp[goi, ]
+#' p1 <- scater::plotReducedDim(dat, "UMAP", color_by = goi)
+#' p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
+#' patchwork::wrap_plots(p1, p2, ncol = 2)
+#'
 #' @importFrom zeallot `%<-%`
 #' @export
 impute <- function(gex,
@@ -35,44 +75,46 @@ impute <- function(gex,
     knn = 16L, ka = 6L, dist_metric = "euclidean",
     dft = NULL, t_max = 16L, tol = 0.001,
     exact_solver = TRUE, conserve_memory = FALSE,
-    env_ret = FALSE, verbose = TRUE) {
+    env_ret = FALSE, verbose = FALSE) {
   .check_params(environment())
 
   if (transpose) {
-    if (verbose) cat("Transposing input matrix\n")
+    if (verbose) message("Transposing input matrix")
     gex <- Matrix::t(gex)
   }
-  gex <- gex[, Matrix::colSums(gex) > 0] # Remove any unexpressed genes prior to PCA to prevent errors
+  
   if (do_norm) {
-    if (verbose) cat("Normalizing input matrix\n")
+    if (verbose) message("Normalizing input matrix")
     gex <- .normalize(gex)
   }
 
   pca <- if (is.null(pca)) {
-    if (verbose) cat("Performing PCA\n")
+    if (verbose) message("Performing PCA")
+    # Remove any unexpressed genes prior to PCA to prevent errors
+    gex <- gex[, Matrix::colSums(gex) > 0]
     .calc_pca(gex, npc, scale)
   } else {
-    if (verbose) cat("Skipping PCA (custom PC matrix provided)\n")
+    if (verbose) message("Skipping PCA (custom PC matrix provided)")
     list(x = pca, v = NULL, center = NULL, scale = NULL)
   }
 
-  if (verbose) cat("Calculating diffusion operator\n")
+  if (verbose) message("Calculating diffusion operator")
   aff <- .calc_diff_op(pca$x, knn, ka, dist_metric)
 
-  if (verbose) cat("Applying diffusion operator\n")
+  if (verbose) message("Applying diffusion operator")
   c(imp, dft) %<-% .apply_diff_op(gex, pca$x, aff, dft, t_max, tol, exact_solver)
   imp <- `if`(exact_solver,
     Matrix::t(imp) |> as.matrix(),
     .invert_pca(imp, pca$v, pca$center, pca$scale, conserve_memory))
   dimnames(imp) <- dimnames(gex) |> rev()
 
-  cat("Done\n")
+  if (verbose) message("Done")
   if (env_ret) as.list(environment()) else imp
 }
 
 #' Parameter validation
-#' @description Checks that all the parameters used in MAGIC imputation are permissible.
-#' @param args The arguments to the magic_impute function
+#' @description Checks that all parameters used in `impute` are valid.
+#' @param args **list** The arguments to the magic_impute function
 #' @returns NULL (but stops execution for invalid parameters)
 .check_params <- function(args) {
   checkmate::assert_multi_class(args$gex, c("Matrix", "matrix"))
@@ -103,9 +145,9 @@ impute <- function(gex,
 }
 
 #' LogCP10K transform
-#' @description Simple normalization method for scRNA-seq data
-#' @param gex Gene expression matrix (cells x genes)
-#' @returns **matrix or dgCMatrix** Transformed (normalized) matrix
+#' @description Simple normalization method for scRNA-seq data.
+#' @param gex **matrix or Matrix** Gene expression matrix (cells x genes)
+#' @returns **matrix or Matrix** Transformed (normalized) matrix
 .normalize <- function(gex) {
   scale_factors <- 1e4 / Matrix::rowSums(gex)
   log1p(gex * scale_factors)
@@ -113,10 +155,10 @@ impute <- function(gex,
 
 #' PCA wrapper
 #' @description Calculate leading principal components (via truncated singular value decomposition).
-#' @param gex **matrix or Matrix** Gene expression matrix
+#' @param gex **matrix or Matrix** Gene expression matrix (without any zero variance genes)
 #' @param npc **numeric(1)** Number of leading principal components to compute
 #' @param scale **logical(1)** Whether to scale genes to unit variance
-#' @returns **list** PC loading/rotation matrices as well as centering/scaling vectors.
+#' @returns **list** PC loading/rotation matrices as well as centering/scaling vectors
 .calc_pca <- function(gex, npc, scale) {
   ctr <- MatrixGenerics::colMeans2(gex, useNames = FALSE)
   sdv <- if (scale) MatrixGenerics::colSds(gex, center = ctr, useNames = FALSE)
@@ -130,15 +172,17 @@ impute <- function(gex,
 #' @param pcs **matrix** Principal components matrix (used for kNN search)
 #' @param knn **integer(1)** Number of nearest neighbors to search for
 #' @param ka **integer(1)** Number of nearest neighbors to use for adaptive kernel
-#' @param dist_metric **character(1)** Type of metric to use for distance calculations during kNN search.
-#' @returns **dgCMatrix** Markov affinity matrix.
+#' @param dist_metric **character(1)** Type of metric to use for distance calculations during kNN search
+#' @returns **dgCMatrix** Markov affinity matrix
 .calc_diff_op <- function(pcs, knn, ka, dist_metric) {
   nbr <- RcppHNSW::hnsw_knn(pcs, knn, distance = dist_metric)
   # Distances to affinities using Gaussian kernel with adaptive width
   aff <- Matrix::sparseMatrix(
-    i = nrow(pcs) |> seq_len() |> rep(knn), j = as.vector(nbr$idx),
+    i = nrow(pcs) |> seq_len() |> rep(knn),
+    j = as.vector(nbr$idx),
     x = exp(-(as.vector(nbr$dist) / nbr$dist[, ka])^2),
-    dims = c(nrow(pcs), nrow(pcs)), dimnames = list(rownames(pcs), rownames(pcs)))
+    dims = c(nrow(pcs), nrow(pcs)),
+    dimnames = list(rownames(pcs), rownames(pcs)))
   aff <- aff + Matrix::t(aff) # Symmetrization
   aff / Matrix::rowSums(aff)  # Markov normalization
 }
@@ -152,9 +196,9 @@ impute <- function(gex,
 #' @param t_max **integer(1)** Maximum diffusion time
 #' @param tol **numeric(1)** Tolerance for Procrustes disparity
 #' @param exact_solver **logical(1)** Perform imputation in gene space
-#' @returns **list(matrix, integer(1))** Imputed matrix and diffusion time used.
+#' @returns **list(matrix, integer(1))** Imputed matrix and diffusion time used
 .apply_diff_op <- function(gex, pcs, aff, dft, t_max, tol, exact_solver) {
-  # (aff %^% pow) %*% x; use repeated sparse matrix multiplication instead of exponentiation
+  # (aff %^% pow) %*% x; use repeated sparse matrix multiplication instead of exponentiation (to conserve memory)
   mtx_mul <- \(x, pow) purrr::reduce(seq_len(pow), \(m, i) aff %*% m, .init = x)
   imp <- if (!is.null(dft)) {
     `if`(exact_solver, gex, pcs) |> mtx_mul(dft)
@@ -177,7 +221,7 @@ impute <- function(gex,
 #' @description Calculates symmetric Procrustes distance (adapted from MATLAB procrustes).
 #' @param x **matrix**
 #' @param y **matrix**
-#' @returns **numeric(1)** Procrustes disparity between input matrices.
+#' @returns **numeric(1)** Procrustes disparity between input matrices
 .procrustes <- function(x, y) {
   pre <- \(m) {
     m <- scale(m, scale = FALSE)
@@ -189,11 +233,11 @@ impute <- function(gex,
 
 #' PCA inversion
 #' @description Reverses operations done for PCA: back-rotation, unscaling, and uncentering.
-#' @param pcs **matrix** The principal components (scaled left singular vectors).
-#' @param rot **matrix** The rotation matrix (right singular vectors).
-#' @param ctr **integer** The centering vector.
-#' @param sdv **integer or NULL** The scaling vector (or NULL if no scaling was applied).
-#' @param low_mem **logical(1)** Whether to use delayed operations to reduce memory usage.
+#' @param pcs **matrix** The principal components (scaled left singular vectors)
+#' @param rot **matrix** The rotation matrix (right singular vectors)
+#' @param ctr **integer** The centering vector
+#' @param sdv **integer or NULL** The scaling vector (or NULL if no scaling was applied)
+#' @param low_mem **logical(1)** Whether to use delayed operations to reduce memory usage
 #' @returns **matrix or DelayedMatrix** `rot %*% t(pcs) * sdv + ctr`
 .invert_pca <- function(pcs, rot, ctr, sdv, low_mem) {
   ret <- `if`(low_mem, BiocSingular::LowRankMatrix, tcrossprod)(rot, pcs)

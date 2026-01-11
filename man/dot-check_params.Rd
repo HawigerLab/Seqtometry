@@ -7,11 +7,11 @@
 .check_params(args)
 }
 \arguments{
-\item{args}{The arguments to the magic_impute function}
+\item{args}{\strong{list} The arguments to the magic_impute function}
 }
 \value{
 NULL (but stops execution for invalid parameters)
 }
 \description{
-Checks that all the parameters used in MAGIC imputation are permissible.
+Checks that all parameters used in \code{impute} are valid.
 }

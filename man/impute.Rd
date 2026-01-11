@@ -2,7 +2,7 @@
 % Please edit documentation in R/impute.R
 \name{impute}
 \alias{impute}
-\title{Performs MAGIC imputation}
+\title{MAGIC imputation (van Dijk et al. 2018)}
 \usage{
 impute(
   gex,
@@ -20,41 +20,57 @@ impute(
   exact_solver = TRUE,
   conserve_memory = FALSE,
   env_ret = FALSE,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
-\item{gex}{\strong{matrix or Matrix} Gene expression values (that has passed quality control).}
+\item{gex}{\strong{matrix or Matrix}
+Gene expression values (that has passed quality control).}
 
-\item{transpose}{\strong{logical(1)} Whether to transpose gex (make it cells x genes) prior to downstream operations.}
+\item{transpose}{\strong{logical(1)}
+Whether to transpose gex (make it cells x genes) prior to downstream operations.}
 
-\item{do_norm}{\strong{logical(1)} Whether to perform LogCP10K normalization on gex.}
+\item{do_norm}{\strong{logical(1)}
+Whether to perform LogCP10K normalization on gex.}
 
-\item{pca}{\strong{matrix (cells x PCs) or NULL} Precomputed principal component matrix (or NULL to derive it from gex).}
+\item{pca}{\strong{matrix (cells x PCs) or NULL}
+Precomputed principal component matrix (or NULL to derive it from gex).}
 
-\item{npc}{\strong{integer(1)} Number of principal components (min = 1) to calculate.}
+\item{npc}{\strong{integer(1)}
+Number of principal components (min = 1) to calculate.}
 
-\item{scale}{\strong{logical(1)} Whether to scale columns of input matrix (after centering) to unit variance prior to PCA.}
+\item{scale}{\strong{logical(1)}
+Whether to scale columns of input matrix to unit variance prior to PCA.}
 
-\item{knn}{\strong{integer(1)} Number of nearest neighbors (min = 2) to consider during distance calculation.}
+\item{knn}{\strong{integer(1)}
+Number of nearest neighbors (min = 2) to consider during distance calculation.}
 
-\item{ka}{\strong{integer(1)} Number of nearest neighbors (min = 2, max <= knn) to use for the adaptive kernel.}
+\item{ka}{\strong{integer(1)}
+Number of nearest neighbors (min = 2, max <= knn) to use for the adaptive kernel.}
 
-\item{dist_metric}{\strong{character(1)} Type of metric to use for distance calculations during kNN search.}
+\item{dist_metric}{\strong{character(1)}
+Type of metric to use for distance calculations during kNN search.}
 
-\item{dft}{\strong{NULL or integer(1)} Automatic (NULL) or user-defined (integer) diffusion time (min = 1, max = 16).}
+\item{dft}{\strong{NULL or integer(1)}
+Automatic (NULL) or user-defined (integer) diffusion time (min = 1, max = 16).}
 
-\item{t_max}{\strong{integer(1)} Maximum diffusion time to test when using automatic diffusion time (min = 1, max = 16).}
+\item{t_max}{\strong{integer(1)}
+Maximum diffusion time to test when using automatic diffusion time (min = 1, max = 16).}
 
-\item{tol}{\strong{numeric(1)} Threshold for Procrustes disparity (min = 0, max = 1) between successive diffusion times.}
+\item{tol}{\strong{numeric(1)}
+Threshold for Procrustes disparity (min = 0, max = 1) between successive diffusion times.}
 
-\item{exact_solver}{\strong{logical(1)} Whether to perform imputation in gene space (TRUE) or PCA space (FALSE).}
+\item{exact_solver}{\strong{logical(1)}
+Whether to perform imputation in gene space (TRUE) or PCA space (FALSE).}
 
-\item{conserve_memory}{\strong{logical(1)} Whether to avoid allocating a large dense matrix when \code{exact_solver = FALSE}.}
+\item{conserve_memory}{\strong{logical(1)}
+Whether to avoid allocating a large dense matrix when \code{exact_solver = FALSE}.}
 
-\item{env_ret}{\strong{logical(1)} Return all variables in the environment (TRUE) or just the imputed matrix (FALSE).}
+\item{env_ret}{\strong{logical(1)}
+Return all variables in the environment (TRUE) or just the imputed matrix (FALSE).}
 
-\item{verbose}{\strong{logical(1)} Whether to issue print statements at different major parts of the algorithm.}
+\item{verbose}{\strong{logical(1)}
+Whether to print messages at different major parts of the algorithm.}
 }
 \value{
 \strong{matrix-like or list}
@@ -74,4 +90,29 @@ Otherwise the function environment as a list containing all parameters (possibly
 }
 \description{
 Calculates a graph diffusion operator for the given input matrix and applies it to produce an imputed matrix.
+}
+\examples{
+# PBMC data, basic processing pipeline
+dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+dimnames(dat) <- list(
+  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+  dat[["Barcode"]])
+dat <- dat |>
+  scuttle::quickPerCellQC() |>
+  scuttle::logNormCounts() |>
+  scater::runUMAP()
+
+# MAGIC imputation
+imp <- SingleCellExperiment::logcounts(dat) |>
+  as("dgCMatrix") |>
+  Seqtometry::impute()
+
+# Visualize unimputed versus imputed expression
+# on UMAP plots for a gene of interest (GOI)
+goi <- "CD19"
+dat[["Imputed_GOI"]] <- imp[goi, ]
+p1 <- scater::plotReducedDim(dat, "UMAP", color_by = goi)
+p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
+patchwork::wrap_plots(p1, p2, ncol = 2)
+
 }

@@ -8,6 +8,5 @@
 #' @param sds numeric: standard deviations of all genes
 #' @returns Modified Kuiper statistic (sum of minimal and maximal deviations during running sum)
 wks <- function(gex, gss, mus, sds) {
-    .Call(`_Seqtometry_wks`, gex, gss, mus, sds)
+  .Call(`_Seqtometry_wks`, gex, gss, mus, sds)
 }
-

@@ -22,7 +22,7 @@
 \item{exact_solver}{\strong{logical(1)} Perform imputation in gene space}
 }
 \value{
-\strong{list(matrix, integer(1))} Imputed matrix and diffusion time used.
+\strong{list(matrix, integer(1))} Imputed matrix and diffusion time used
 }
 \description{
 Apply diffusion operator to data in order to perform imputation.

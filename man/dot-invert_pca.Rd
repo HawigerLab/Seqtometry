@@ -7,15 +7,15 @@
 .invert_pca(pcs, rot, ctr, sdv, low_mem)
 }
 \arguments{
-\item{pcs}{\strong{matrix} The principal components (scaled left singular vectors).}
+\item{pcs}{\strong{matrix} The principal components (scaled left singular vectors)}
 
-\item{rot}{\strong{matrix} The rotation matrix (right singular vectors).}
+\item{rot}{\strong{matrix} The rotation matrix (right singular vectors)}
 
-\item{ctr}{\strong{integer} The centering vector.}
+\item{ctr}{\strong{integer} The centering vector}
 
-\item{sdv}{\strong{integer or NULL} The scaling vector (or NULL if no scaling was applied).}
+\item{sdv}{\strong{integer or NULL} The scaling vector (or NULL if no scaling was applied)}
 
-\item{low_mem}{\strong{logical(1)} Whether to use delayed operations to reduce memory usage.}
+\item{low_mem}{\strong{logical(1)} Whether to use delayed operations to reduce memory usage}
 }
 \value{
 \strong{matrix or DelayedMatrix} \code{rot \%*\% t(pcs) * sdv + ctr}

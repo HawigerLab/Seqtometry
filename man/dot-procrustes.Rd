@@ -12,7 +12,7 @@
 \item{y}{\strong{matrix}}
 }
 \value{
-\strong{numeric(1)} Procrustes disparity between input matrices.
+\strong{numeric(1)} Procrustes disparity between input matrices
 }
 \description{
 Calculates symmetric Procrustes distance (adapted from MATLAB procrustes).
