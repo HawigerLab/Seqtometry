@@ -1,4 +1,4 @@
-# Seqtometry 0.2.1
+# Seqtometry 0.99.0
 
 Update for potential Bioconductor submission
 

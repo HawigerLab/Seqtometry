@@ -19,7 +19,7 @@ remotes::install_github("HawigerLab/Seqtometry")
 
 # Quickstart
 
-Please see the [vignette](vignettes/Seqtometry.html) for basic usage. For more detailed protocols involving step-by-step instructions for more advanced workflows, please see the following publication:
+Please see the [vignette](vignettes/Seqtometry.Rmd) for basic usage. For more detailed protocols involving step-by-step instructions for more advanced workflows, please see the following publication:
 
 [Kousnetsov and Hawiger, Analysis of single cell sequencing data by Seqtometry, STAR Protocols (2024)](https://doi.org/10.1016/j.xpro.2024.103209)
 
