@@ -27,7 +27,6 @@ Imports:
     RSpectra,
     zeallot
 Suggests:
-    ArchR,
     dplyr,
     future,
     ggplot2,
