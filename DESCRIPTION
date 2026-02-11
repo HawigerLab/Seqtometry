@@ -1,6 +1,6 @@
 Package: Seqtometry
 Title: Signature scoring for single cell analysis
-Version: 0.99.0
+Version: 0.99.1
 URL: https://github.com/HawigerLab/Seqtometry
 BugReports: https://github.com/HawigerLab/Seqtometry/issues
 Authors@R: c( 
