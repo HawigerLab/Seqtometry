@@ -1,3 +1,16 @@
+# Seqtometry 0.99.2
+
+Update for code review
+
+- Unit tests added
+- Replaced use of :: in code with @importFrom or the box package
+- Added details to package description and vignette (introduction and installation)
+- Decreased vignette's reliance on external online resources
+
+# Seqtometry 0.99.1
+
+Rebuild
+
 # Seqtometry 0.99.0
 
 Update for potential Bioconductor submission

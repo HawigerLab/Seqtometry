@@ -24,20 +24,27 @@ Single cell scores (cells x signatures) for each signature, where cell barcodes 
 Computes signature scores (a weighted KS-like statistic) for single cell expression data
 }
 \examples{
+box::use(
+  TENxPBMCData[TENxPBMCData],
+  SingleCellExperiment[rowData, logcounts],
+  scuttle[quickPerCellQC, logNormCounts],
+  scater[runUMAP, plotReducedDim],
+  patchwork[wrap_plots])
+
 # PBMC data, basic processing pipeline
-dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+dat <- TENxPBMCData(dataset = "pbmc3k")
 dimnames(dat) <- list(
-  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+  rowData(dat)[["Symbol_TENx"]],
   dat[["Barcode"]])
 dat <- dat |>
-  scuttle::quickPerCellQC() |>
-  scuttle::logNormCounts() |>
-  scater::runUMAP()
+  quickPerCellQC() |>
+  logNormCounts() |>
+  runUMAP()
 
 # MAGIC imputation
-imp <- SingleCellExperiment::logcounts(dat) |>
+imp <- logcounts(dat) |>
   as("dgCMatrix") |>
-  Seqtometry::impute()
+  impute()
 
 # Score with a B cell signature (gene set)
 options(future.globals.maxSize = 1024^3)
@@ -45,8 +52,8 @@ b_cell_sig <- list("B_cell" = c("CD19", "MS4A1", "CD79A", "CD79B"))
 dat[["B cell signature"]] <- Seqtometry::score(imp, b_cell_sig)[["B_cell"]]
 
 # Visualize a hallmark B cell gene versus a B cell signature score
-p1 <- scater::plotReducedDim(dat, "UMAP", color_by = "CD19")
-p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "B cell signature")
-patchwork::wrap_plots(p1, p2, ncol = 2)
+p1 <- plotReducedDim(dat, "UMAP", color_by = "CD19")
+p2 <- plotReducedDim(dat, "UMAP", color_by = "B cell signature")
+wrap_plots(p1, p2, ncol = 2)
 
 }

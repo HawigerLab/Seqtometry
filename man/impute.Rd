@@ -92,27 +92,34 @@ Otherwise the function environment as a list containing all parameters (possibly
 Calculates a graph diffusion operator for the given input matrix and applies it to produce an imputed matrix.
 }
 \examples{
+box::use(
+  TENxPBMCData[TENxPBMCData],
+  SingleCellExperiment[rowData, logcounts],
+  scuttle[quickPerCellQC, logNormCounts],
+  scater[runUMAP, plotReducedDim],
+  patchwork[wrap_plots])
+
 # PBMC data, basic processing pipeline
-dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+dat <- TENxPBMCData(dataset = "pbmc3k")
 dimnames(dat) <- list(
-  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+  rowData(dat)[["Symbol_TENx"]],
   dat[["Barcode"]])
 dat <- dat |>
-  scuttle::quickPerCellQC() |>
-  scuttle::logNormCounts() |>
-  scater::runUMAP()
+  quickPerCellQC() |>
+  logNormCounts() |>
+  runUMAP()
 
 # MAGIC imputation
-imp <- SingleCellExperiment::logcounts(dat) |>
+imp <- logcounts(dat) |>
   as("dgCMatrix") |>
-  Seqtometry::impute()
+  impute()
 
 # Visualize unimputed versus imputed expression
 # on UMAP plots for a gene of interest (GOI)
 goi <- "CD19"
 dat[["Imputed_GOI"]] <- imp[goi, ]
-p1 <- scater::plotReducedDim(dat, "UMAP", color_by = goi)
-p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
-patchwork::wrap_plots(p1, p2, ncol = 2)
+p1 <- plotReducedDim(dat, "UMAP", color_by = goi)
+p2 <- plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
+wrap_plots(p1, p2, ncol = 2)
 
 }

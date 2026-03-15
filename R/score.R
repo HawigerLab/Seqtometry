@@ -9,21 +9,29 @@
 #' Whether to perform minmax transform on scoring results (default: TRUE)
 #' @returns **data.table**
 #' Single cell scores (cells x signatures) for each signature, where cell barcodes are stored in the "id" column
+#'
 #' @examples
+#' box::use(
+#'   TENxPBMCData[TENxPBMCData],
+#'   SingleCellExperiment[rowData, logcounts],
+#'   scuttle[quickPerCellQC, logNormCounts],
+#'   scater[runUMAP, plotReducedDim],
+#'   patchwork[wrap_plots])
+#'
 #' # PBMC data, basic processing pipeline
-#' dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+#' dat <- TENxPBMCData(dataset = "pbmc3k")
 #' dimnames(dat) <- list(
-#'   SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+#'   rowData(dat)[["Symbol_TENx"]],
 #'   dat[["Barcode"]])
 #' dat <- dat |>
-#'   scuttle::quickPerCellQC() |>
-#'   scuttle::logNormCounts() |>
-#'   scater::runUMAP()
+#'   quickPerCellQC() |>
+#'   logNormCounts() |>
+#'   runUMAP()
 #'
 #' # MAGIC imputation
-#' imp <- SingleCellExperiment::logcounts(dat) |>
+#' imp <- logcounts(dat) |>
 #'   as("dgCMatrix") |>
-#'   Seqtometry::impute()
+#'   impute()
 #'
 #' # Score with a B cell signature (gene set)
 #' options(future.globals.maxSize = 1024^3)
@@ -31,24 +39,29 @@
 #' dat[["B cell signature"]] <- Seqtometry::score(imp, b_cell_sig)[["B_cell"]]
 #'
 #' # Visualize a hallmark B cell gene versus a B cell signature score
-#' p1 <- scater::plotReducedDim(dat, "UMAP", color_by = "CD19")
-#' p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "B cell signature")
-#' patchwork::wrap_plots(p1, p2, ncol = 2)
+#' p1 <- plotReducedDim(dat, "UMAP", color_by = "CD19")
+#' p2 <- plotReducedDim(dat, "UMAP", color_by = "B cell signature")
+#' wrap_plots(p1, p2, ncol = 2)
 #'
-#' @importFrom data.table `:=`
+#' @importFrom checkmate assert_multi_class assert_character assert_list assert_logical
+#' @importFrom MatrixGenerics rowMeans2 rowSds
+#' @importFrom future.apply future_lapply
+#' @importFrom data.table `:=` transpose setDT setnames setcolorder
+#' @importFrom Rcpp sourceCpp
+#' @useDynLib Seqtometry, .registration = TRUE
 #' @export
 score <- function(mat, signatures, minmax = TRUE) {
   # Check parameter types
-  checkmate::assert_multi_class(mat, c("matrix", "Matrix", "DelayedMatrix"))
-  checkmate::assert_character(rownames(mat))
-  checkmate::assert_character(colnames(mat))
-  checkmate::assert_list(signatures, type = "character")
-  checkmate::assert_logical(minmax, len = 1L)
+  assert_multi_class(mat, c("matrix", "Matrix", "DelayedMatrix"))
+  assert_character(rownames(mat))
+  assert_character(colnames(mat))
+  assert_list(signatures, type = "character")
+  assert_logical(minmax, len = 1L)
 
   # Means and standard deviations of all genes across all cells
   # for Z score transform performed inside Rcpp helper function
-  mus <- MatrixGenerics::rowMeans2(mat, useNames = FALSE)
-  sds <- MatrixGenerics::rowSds(mat, center = mus, useNames = FALSE)
+  mus <- rowMeans2(mat, useNames = FALSE)
+  sds <- rowSds(mat, center = mus, useNames = FALSE)
 
   # Ignore any unexpressed genes
   nonzero <- which(sds != 0)
@@ -65,16 +78,18 @@ score <- function(mat, signatures, minmax = TRUE) {
   # Calls Rcpp subroutine for weighted KS-like procedure
   # Converts resultant list to data.table for plotting later (in ggplot2)
   ret <- seq_len(ncol(mat)) |>
-    future.apply::future_lapply(\(j) wks(mat[, j], gix, mus, sds)) |>
-    data.table::transpose() |>
-    data.table::setDT()
+    future_lapply(\(j) wks(mat[, j], gix, mus, sds)) |>
+    transpose() |>
+    setDT()
 
   # Apply minmax transform to scores
   if (minmax) ret[, names(ret) := lapply(ret, .minmax_scale)]
 
   # Assign cell barcodes (id) and signature names to scores
-  data.table::setnames(ret, names(signatures))
-  ret[, "id" := colnames(mat)] |> data.table::setcolorder("id")
+  ret |>
+    setnames(names(signatures)) |>
+    _[, "id" := colnames(mat)] |>
+    setcolorder("id")
 }
 
 #' Finds row indices of signature genes

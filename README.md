@@ -5,12 +5,25 @@ This is an R package for Seqtometry analysis of single cell data by scoring with
 
 # Graphical abstract
 
-<img src="https://prod-shared-star-protocols.s3.amazonaws.com/protocols/3639-GA.jpg" width="50%">
+<img src="vignettes/Graphical_Abstract.png" width="50%">
 
 # Installation
 
+Stable version
+
 ```r
-install.packages("remotes")
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("Seqtometry")
+```
+
+Developmental version
+
+```r
+if (!require("remotes", quietly = TRUE))
+  install.packages("remotes")
+
 remotes::install_github("HawigerLab/Seqtometry")
 ```
 

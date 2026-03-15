@@ -43,30 +43,39 @@
 #'     - `v` **matrix (genes x PCs)** The rotation matrix (right singular vectors).
 #'     - `center` **integer (cells)** The centering vector.
 #'     - `scale` **integer (cells) or NULL** The scaling vector (or NULL if no scaling was applied).
+#'
 #' @examples
+#' box::use(
+#'   TENxPBMCData[TENxPBMCData],
+#'   SingleCellExperiment[rowData, logcounts],
+#'   scuttle[quickPerCellQC, logNormCounts],
+#'   scater[runUMAP, plotReducedDim],
+#'   patchwork[wrap_plots])
+#'
 #' # PBMC data, basic processing pipeline
-#' dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
+#' dat <- TENxPBMCData(dataset = "pbmc3k")
 #' dimnames(dat) <- list(
-#'   SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
+#'   rowData(dat)[["Symbol_TENx"]],
 #'   dat[["Barcode"]])
 #' dat <- dat |>
-#'   scuttle::quickPerCellQC() |>
-#'   scuttle::logNormCounts() |>
-#'   scater::runUMAP()
+#'   quickPerCellQC() |>
+#'   logNormCounts() |>
+#'   runUMAP()
 #'
 #' # MAGIC imputation
-#' imp <- SingleCellExperiment::logcounts(dat) |>
+#' imp <- logcounts(dat) |>
 #'   as("dgCMatrix") |>
-#'   Seqtometry::impute()
+#'   impute()
 #'
 #' # Visualize unimputed versus imputed expression
 #' # on UMAP plots for a gene of interest (GOI)
 #' goi <- "CD19"
 #' dat[["Imputed_GOI"]] <- imp[goi, ]
-#' p1 <- scater::plotReducedDim(dat, "UMAP", color_by = goi)
-#' p2 <- scater::plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
-#' patchwork::wrap_plots(p1, p2, ncol = 2)
+#' p1 <- plotReducedDim(dat, "UMAP", color_by = goi)
+#' p2 <- plotReducedDim(dat, "UMAP", color_by = "Imputed_GOI")
+#' wrap_plots(p1, p2, ncol = 2)
 #'
+#' @importFrom Matrix t colSums
 #' @importFrom zeallot `%<-%`
 #' @export
 impute <- function(gex,
@@ -82,7 +91,7 @@ impute <- function(gex,
     if (verbose) message("Transposing input matrix")
     gex <- Matrix::t(gex)
   }
-  
+
   if (do_norm) {
     if (verbose) message("Normalizing input matrix")
     gex <- .normalize(gex)
@@ -91,7 +100,7 @@ impute <- function(gex,
   pca <- if (is.null(pca)) {
     if (verbose) message("Performing PCA")
     # Remove any unexpressed genes prior to PCA to prevent errors
-    gex <- gex[, Matrix::colSums(gex) > 0]
+    gex <- gex[, colSums(gex) > 0]
     .calc_pca(gex, npc, scale)
   } else {
     if (verbose) message("Skipping PCA (custom PC matrix provided)")
@@ -104,7 +113,7 @@ impute <- function(gex,
   if (verbose) message("Applying diffusion operator")
   c(imp, dft) %<-% .apply_diff_op(gex, pca$x, aff, dft, t_max, tol, exact_solver)
   imp <- `if`(exact_solver,
-    Matrix::t(imp) |> as.matrix(),
+    t(imp) |> as.matrix(),
     .invert_pca(imp, pca$v, pca$center, pca$scale, conserve_memory))
   dimnames(imp) <- dimnames(gex) |> rev()
 
@@ -116,30 +125,31 @@ impute <- function(gex,
 #' @description Checks that all parameters used in `impute` are valid.
 #' @param args **list** The arguments to the magic_impute function
 #' @returns NULL (but stops execution for invalid parameters)
+#' @importFrom checkmate assert_multi_class assert_logical assert_true assert_int assert_matrix assert_number
 .check_params <- function(args) {
-  checkmate::assert_multi_class(args$gex, c("Matrix", "matrix"))
-  checkmate::assert_logical(args$transpose, len = 1L)
-  checkmate::assert_logical(args$do_norm, len = 1L)
-  checkmate::assert_logical(args$env_ret, len = 1L)
-  checkmate::assert_logical(args$verbose, len = 1L)
-  checkmate::assert_logical(args$exact_solver, len = 1L)
-  checkmate::assert_logical(args$conserve_memory, len = 1L)
+  assert_multi_class(args$gex, c("Matrix", "matrix"))
+  assert_logical(args$transpose, len = 1L)
+  assert_logical(args$do_norm, len = 1L)
+  assert_logical(args$env_ret, len = 1L)
+  assert_logical(args$verbose, len = 1L)
+  assert_logical(args$exact_solver, len = 1L)
+  assert_logical(args$conserve_memory, len = 1L)
   if (is.null(args$pca)) {
-    checkmate::assert_int(args$npc, lower = 1L, upper = nrow(args$gex))
-    checkmate::assert_logical(args$scale, len = 1L)
+    assert_int(args$npc, lower = 1L, upper = nrow(args$gex))
+    assert_logical(args$scale, len = 1L)
   } else {
-    checkmate::assert_true(args$exact_solver)
-    checkmate::assert_matrix(args$pca)
-    checkmate::assert_true(nrow(args$pca) == `if`(args$transpose, ncol, nrow)(args$gex))
+    assert_true(args$exact_solver)
+    assert_matrix(args$pca)
+    assert_true(nrow(args$pca) == `if`(args$transpose, ncol, nrow)(args$gex))
   }
-  checkmate::assert_int(args$knn, lower = 2L)
-  checkmate::assert_int(args$ka, lower = 2L, upper = args$knn)
-  checkmate::assert_true(args$dist_metric %in% c("euclidean", "l2", "cosine", "ip"))
+  assert_int(args$knn, lower = 2L)
+  assert_int(args$ka, lower = 2L, upper = args$knn)
+  assert_true(args$dist_metric %in% c("euclidean", "l2", "cosine", "ip"))
   if (is.null(args$dft)) {
-    checkmate::assert_int(args$t_max, lower = 1L, upper = 16L)
-    checkmate::assert_number(args$tol, lower = 0, upper = 1)
+    assert_int(args$t_max, lower = 1L, upper = 16L)
+    assert_number(args$tol, lower = 0, upper = 1)
   } else {
-    checkmate::assert_int(args$dft, lower = 1L, upper = 16L)
+    assert_int(args$dft, lower = 1L, upper = 16L)
   }
   NULL
 }
@@ -148,8 +158,9 @@ impute <- function(gex,
 #' @description Simple normalization method for scRNA-seq data.
 #' @param gex **matrix or Matrix** Gene expression matrix (cells x genes)
 #' @returns **matrix or Matrix** Transformed (normalized) matrix
+#' @importFrom Matrix rowSums
 .normalize <- function(gex) {
-  scale_factors <- 1e4 / Matrix::rowSums(gex)
+  scale_factors <- 1e4 / rowSums(gex)
   log1p(gex * scale_factors)
 }
 
@@ -159,10 +170,12 @@ impute <- function(gex,
 #' @param npc **numeric(1)** Number of leading principal components to compute
 #' @param scale **logical(1)** Whether to scale genes to unit variance
 #' @returns **list** PC loading/rotation matrices as well as centering/scaling vectors
+#' @importFrom MatrixGenerics colMeans2 colSds
+#' @importFrom RSpectra svds
 .calc_pca <- function(gex, npc, scale) {
-  ctr <- MatrixGenerics::colMeans2(gex, useNames = FALSE)
-  sdv <- if (scale) MatrixGenerics::colSds(gex, center = ctr, useNames = FALSE)
-  svd <- RSpectra::svds(gex, npc, opts = list(center = ctr, scale = sdv))
+  ctr <- colMeans2(gex, useNames = FALSE)
+  sdv <- if (scale) colSds(gex, center = ctr, useNames = FALSE)
+  svd <- svds(gex, npc, opts = list(center = ctr, scale = sdv))
   sweep(svd$u, 2, svd$d * sqrt(nrow(gex) - 1), "*") |>
     list(x = _, v = svd$v, center = ctr, scale = sdv)
 }
@@ -174,17 +187,19 @@ impute <- function(gex,
 #' @param ka **integer(1)** Number of nearest neighbors to use for adaptive kernel
 #' @param dist_metric **character(1)** Type of metric to use for distance calculations during kNN search
 #' @returns **dgCMatrix** Markov affinity matrix
+#' @importFrom RcppHNSW hnsw_knn
+#' @importFrom Matrix sparseMatrix t rowSums
 .calc_diff_op <- function(pcs, knn, ka, dist_metric) {
-  nbr <- RcppHNSW::hnsw_knn(pcs, knn, distance = dist_metric)
+  nbr <- hnsw_knn(pcs, knn, distance = dist_metric)
   # Distances to affinities using Gaussian kernel with adaptive width
-  aff <- Matrix::sparseMatrix(
+  aff <- sparseMatrix(
     i = nrow(pcs) |> seq_len() |> rep(knn),
     j = as.vector(nbr$idx),
     x = exp(-(as.vector(nbr$dist) / nbr$dist[, ka])^2),
     dims = c(nrow(pcs), nrow(pcs)),
     dimnames = list(rownames(pcs), rownames(pcs)))
-  aff <- aff + Matrix::t(aff) # Symmetrization
-  aff / Matrix::rowSums(aff)  # Markov normalization
+  aff <- aff + t(aff) # Symmetrization
+  aff / rowSums(aff)  # Markov normalization
 }
 
 #' Perform data diffusion
@@ -197,9 +212,10 @@ impute <- function(gex,
 #' @param tol **numeric(1)** Tolerance for Procrustes disparity
 #' @param exact_solver **logical(1)** Perform imputation in gene space
 #' @returns **list(matrix, integer(1))** Imputed matrix and diffusion time used
+#' @importFrom purrr reduce
 .apply_diff_op <- function(gex, pcs, aff, dft, t_max, tol, exact_solver) {
   # (aff %^% pow) %*% x; use repeated sparse matrix multiplication instead of exponentiation (to conserve memory)
-  mtx_mul <- \(x, pow) purrr::reduce(seq_len(pow), \(m, i) aff %*% m, .init = x)
+  mtx_mul <- \(x, pow) reduce(seq_len(pow), \(m, i) aff %*% m, .init = x)
   imp <- if (!is.null(dft)) {
     `if`(exact_solver, gex, pcs) |> mtx_mul(dft)
   } else { # Determine optimal diffusion time using the PC matrix (for performance reasons)
@@ -239,8 +255,9 @@ impute <- function(gex,
 #' @param sdv **integer or NULL** The scaling vector (or NULL if no scaling was applied)
 #' @param low_mem **logical(1)** Whether to use delayed operations to reduce memory usage
 #' @returns **matrix or DelayedMatrix** `rot %*% t(pcs) * sdv + ctr`
+#' @importFrom BiocSingular LowRankMatrix
 .invert_pca <- function(pcs, rot, ctr, sdv, low_mem) {
-  ret <- `if`(low_mem, BiocSingular::LowRankMatrix, tcrossprod)(rot, pcs)
+  ret <- `if`(low_mem, LowRankMatrix, tcrossprod)(rot, pcs)
   if (!is.null(sdv)) ret <- ret * sdv
   ret + ctr
 }

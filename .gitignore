@@ -2,3 +2,5 @@
 src/*.o
 src/*.so
 vignettes/*.html
+/doc/
+/Meta/

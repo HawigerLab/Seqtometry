@@ -8,39 +8,57 @@ vignette: >
 ---
 
 ```{r opts, include = FALSE}
-knitr::opts_chunk$set(
+box::use(knitr[opts_chunk])
+opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
 ```
 
+# Introduction
+
+Single cell RNA sequencing (scRNA-seq) analysis can be a challenging endeavor whose predominant approach involves clustering cells for the purposes of annotation and characterization. Signatures represent a gene set encompassing a biological process or cell type that can be used to analyze scRNA-seq data directly without clustering. Seqtometry makes use of signature scores to progressively partition data according to biaxial plots, revealing populations in a manner akin to flow cytometry. This vignette contains a simple example of a Seqtometry workflow involving peripheral blood mononuclear cell (PBMC) data. Herein, 4 immune cell populations will be identified using corresponding signatures. For more advanced workflows, please see the [STAR Protocols publication](https://doi.org/10.1016/j.xpro.2024.103209).
+
+# Installation
+
+To install this package, start R and enter:
+
+```{r install, eval = FALSE}
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("Seqtometry")
+```
+
 # Basic workflow
 
 ```{r overview, echo = FALSE, fig.align = "center", out.width = "80%"}
-knitr::include_graphics("https://prod-shared-star-protocols.s3.amazonaws.com/protocols/3639-GA.jpg")
+box::use(knitr[include_graphics])
+include_graphics("Graphical_Abstract.png")
 ```
-
-This vignette contains a simple example of a Seqtometry workflow involving peripheral blood mononuclear cell (PBMC) data. Herein, 4 immune cell populations will be identified using corresponding signatures (gene sets). For more advanced workflows, please see the [STAR Protocols publication](https://doi.org/10.1016/j.xpro.2024.103209).
 
 ## Retrieve data and signatures
 
 Load a small PBMC dataset and associated signatures.
 
 ```{r fetch, message = FALSE}
+# Cleanly add functions from various packages into the current namespace
+box::use(
+  TENxPBMCData[TENxPBMCData],
+  SingleCellExperiment[counts, rowData],
+  data.table[fread],
+  tibble[deframe],
+  stringr[str_split_1])
+
 # Gene expression data (with gene symbols)
-dat <- TENxPBMCData::TENxPBMCData(dataset = "pbmc3k")
-gex <- SingleCellExperiment::counts(dat) |> as("dgCMatrix")
-dimnames(gex) <- list(
-  SingleCellExperiment::rowData(dat)[["Symbol_TENx"]],
-  dat[["Barcode"]])
+dat <- TENxPBMCData(dataset = "pbmc3k")
+gex <- counts(dat) |> as("dgCMatrix")
+dimnames(gex) <- list(rowData(dat)[["Symbol_TENx"]], dat[["Barcode"]])
 
 # Signatures (consisting of gene symbols)
-sig_names <- c("T cell", "B cell", "NK cell", "Monocyte")
-sig_url <- "https://ars.els-cdn.com/content/image/1-s2.0-S2405471223003599-mmc2.xlsx"
-sig <- openxlsx::read.xlsx(sig_url) |>
-  dplyr::filter(Signature.name %in% sig_names) |>
-  dplyr::mutate(Genes = stringr::str_split(Genes, ", ")) |>
-  dplyr::pull(Genes, name = Signature.name)
+sig <- fread("signatures.tsv") |>
+  deframe() |>
+  lapply(\(x) stringr::str_split_1(x, ","))
 ```
 
 ## Preprocessing and imputation
@@ -48,14 +66,18 @@ sig <- openxlsx::read.xlsx(sig_url) |>
 Perform quality control, normalization, and MAGIC imputation (van Dijk et al. 2018).
 
 ```{r pre}
+box::use(
+  scuttle[perCellQCMetrics, perCellQCFilters, normalizeCounts],
+  Seqtometry[impute])
+
 qc <- function(mat) {
   # Indices of mitochondrial genes
   mito_idx <- grep("^MT-", rownames(mat))
 
   # Calculate QC metrics
   res <- mat |>
-    scuttle::perCellQCMetrics(subsets = list("Mito" = mito_idx)) |>
-    scuttle::perCellQCFilters(sub.fields = "subsets_Mito_percent")
+    perCellQCMetrics(subsets = list("Mito" = mito_idx)) |>
+    perCellQCFilters(sub.fields = "subsets_Mito_percent")
 
   # Remove low quality cells
   mat[, !res$discard]
@@ -63,8 +85,8 @@ qc <- function(mat) {
 
 imputed_gex <- gex |>
   qc() |>
-  scuttle::normalizeCounts() |>
-  Seqtometry::impute()
+  normalizeCounts() |>
+  impute()
 ```
 
 ## Score and plot data
@@ -72,23 +94,26 @@ imputed_gex <- gex |>
 Score the data for the *T cell* and *B cell* signatures.
 
 ```{r score}
+box::use(
+  future[plan],
+  Seqtometry[score])
+
 # May set up parallel backend if it is supported
 # Will default to non-parallel (sequential) execution
-future::plan("sequential")
+plan("sequential")
 
 # Allot 1 GiB of memory for global variables
 options(future.globals.maxSize = 1024 ^ 3)
 
 # Scoring with lymphocyte signatures
 scores <- sig[c("T cell", "B cell")] |>
-  Seqtometry::score(imputed_gex, signatures = _)
+  score(imputed_gex, signatures = _)
 ```
 
 Create a plot from the signature scores.
 
 ```{r plot, fig.align = "center", out.width = "50%"}
-# Avoid having to prefix common plot elements with ggplot2::
-library(ggplot2)
+box::use(ggplot2[...])
 
 # A flow cytometry style theme for plots
 theme_custom <- theme_bw() + theme(

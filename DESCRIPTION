@@ -1,13 +1,13 @@
 Package: Seqtometry
 Title: Signature scoring for single cell analysis
-Version: 0.99.1
+Version: 0.99.2
 URL: https://github.com/HawigerLab/Seqtometry
 BugReports: https://github.com/HawigerLab/Seqtometry/issues
 Authors@R: c( 
     person("Robert", "Kousnetsov", email = "robert.kousnetsov@health.slu.edu", role = c("aut", "cre")),
     person("Daniel", "Hawiger", email = "daniel.hawiger@health.slu.edu", role = c("cph", "fnd")))
 Description: 
-    This package provides functions used in Seqtometry (Kousnetsov et al. 2024), a method for analyzing single cell (scRNA-seq or scATAC-seq) data via signature (gene set) enrichment scores.
+    This package provides functions used in Seqtometry (Kousnetsov et al. 2024), a method for analyzing single cell (scRNA-seq or scATAC-seq) data via signature (gene set) enrichment scores. The Seqtometry scores may be useful for annotating or characterizing cells, either in a flow cytometry like workflow (where scores are standalone features used for progressive partitoning as described in the Seqtometry publication) or in a cluster-based workflow (as features of clusters). The exported impute function (a port of Python's MAGIC-impute, van Dijk et al. 2018), may also be useful for single cell analysis on its own.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -27,13 +27,13 @@ Imports:
     RSpectra,
     zeallot
 Suggests:
+    box,
     dplyr,
     future,
     ggplot2,
     harmony,
     knitr,
     MASS,
-    openxlsx,
     patchwork,
     rmarkdown,
     scater,
@@ -41,6 +41,9 @@ Suggests:
     SingleCellExperiment,
     sparseMatrixStats,
     stringr,
-    TENxPBMCData
+    TENxPBMCData,
+    testthat (>= 3.0.0),
+    tibble
 biocViews: SingleCell, GeneSetEnrichment, GeneExpression
 VignetteBuilder: knitr
+Config/testthat/edition: 3
