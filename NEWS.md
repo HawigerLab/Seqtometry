@@ -1,3 +1,9 @@
+# Seqtometry 0.99.3
+
+Rebuild
+
+- Added BiocStyle to Suggests
+
 # Seqtometry 0.99.2
 
 Update for code review
@@ -10,6 +16,8 @@ Update for code review
 # Seqtometry 0.99.1
 
 Rebuild
+
+- Updated maintainer info
 
 # Seqtometry 0.99.0
 
